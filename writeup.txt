@@ -1,0 +1,154 @@
+This is a write up for the tryhackme room called startUp rated easy
+
+
+We are Spice Hut, a new startup company that just made it big! We offer a variety of spices and club sandwiches (in case you get hungry), but that is not why you are here. To be truthful, we aren't sure if our developers know what they are doing and our security concerns are rising. We ask that you perform a thorough penetration test and try to own root. Good luck!
+
+This is a normal CTF there's a user flag and a root flag and a soup recipe flag to to find
+
+nmap -sV -sS -A 10.10.246.47      
+Starting Nmap 7.91 ( https://nmap.org ) at 2021-05-10 19:46 SAST
+Nmap scan report for 10.10.246.47
+Host is up (0.16s latency).
+Not shown: 997 closed ports
+PORT   STATE SERVICE VERSION
+21/tcp open  ftp     vsftpd 3.0.3
+| ftp-anon: Anonymous FTP login allowed (FTP code 230)
+| drwxrwxrwx    2 65534    65534        4096 Nov 12 04:53 ftp [NSE: writeable]
+| -rw-r--r--    1 0        0          251631 Nov 12 04:02 important.jpg
+|_-rw-r--r--    1 0        0             208 Nov 12 04:53 notice.txt
+| ftp-syst: 
+|   STAT: 
+| FTP server status:
+|      Connected to 10.9.6.2
+|      Logged in as ftp
+|      TYPE: ASCII
+|      No session bandwidth limit
+|      Session timeout in seconds is 300
+|      Control connection is plain text
+|      Data connections will be plain text
+|      At session startup, client count was 4
+|      vsFTPd 3.0.3 - secure, fast, stable
+|_End of status
+22/tcp open  ssh     OpenSSH 7.2p2 Ubuntu 4ubuntu2.10 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey: 
+|   2048 b9:a6:0b:84:1d:22:01:a4:01:30:48:43:61:2b:ab:94 (RSA)
+|   256 ec:13:25:8c:18:20:36:e6:ce:91:0e:16:26:eb:a2:be (ECDSA)
+|_  256 a2:ff:2a:72:81:aa:a2:9f:55:a4:dc:92:23:e6:b4:3f (ED25519)
+80/tcp open  http    Apache httpd 2.4.18 ((Ubuntu))
+|_http-server-header: Apache/2.4.18 (Ubuntu)
+|_http-title: Maintenance
+
+Awesome ssh, ftp and http ports are open. With that we can start putting together a plan of what to do. So I'm going to go look at the web page.
+
+
+No spice here!
+
+Please excuse us as we develop our site. We want to make it the most stylish and convienient way to buy peppers. Plus, we need a web developer. BTW if you're a web developer, contact us. Otherwise, don't you worry. We'll be online shortly!
+
+— Dev Team
+
+
+Cool we can see some stuff here so going to run a quick Gobuster scan on it.
+
+gobuster dir -u http://10.10.246.47 -w /usr/share/wordlists/dirb/common.txt                                1 ⨯
+===============================================================
+Gobuster v3.1.0
+by OJ Reeves (@TheColonial) & Christian Mehlmauer (@firefart)
+===============================================================
+[+] Url:                     http://10.10.246.47
+[+] Method:                  GET
+[+] Threads:                 10
+[+] Wordlist:                /usr/share/wordlists/dirb/common.txt
+[+] Negative Status codes:   404
+[+] User Agent:              gobuster/3.1.0
+[+] Timeout:                 10s
+===============================================================
+2021/05/10 19:51:46 Starting gobuster in directory enumeration mode
+===============================================================
+/.hta                 (Status: 403) [Size: 277]
+/.htpasswd            (Status: 403) [Size: 277]
+/.htaccess            (Status: 403) [Size: 277]
+/files                (Status: 301) [Size: 312] [--> http://10.10.246.47/files/]
+/index.html           (Status: 200) [Size: 808]                                 
+/server-status        (Status: 403) [Size: 277]                                 
+                                                                                
+===============================================================
+2021/05/10 19:53:09 Finished
+===============================================================
+
+So there's a meme which is always a win to find even if it's an old one and we got a name, maya, from the other document. There is an ftp folder but I can't see anything inside of it. Though now that we have a name we can try to brute force the ftp with a tool like hydra.
+	I'm using medusa not hydra. FOr a harder CTF I'd use hydra but medusa is much faster for me and works well enough for this level. Anyway I'm running the RockYou.txt through Medusa
+
+While we wait for the brute force to complete I'm going to run a scan of the ftp directory using gobuster to see if there's anything to find
+
+So those were both the wrong drieection to in. while I was waiting for them to complete I tried to log into the ftp server with the classic anonymous:anonymous and it worked. But the ftp server has the same stuff as the webpage. But ftp allows us to do something we couldn;t on the webpage. Yes you guessed it. Upload a reverse shell.
+
+Fun it was super easy to get that shell uploaded. I used a shell from pentest monkey configured it to my IP and uploaded  it. If you don't know how to use reverse shells there's a great room on them in tryhackme
+
+Now we have access
+
+$ whoami
+www-data                                                                                                            
+$ ls                                                                                                                
+bin                                                                                                                 
+boot                                                                                                                
+dev                                                                                        
+etc                                                                                                                 
+home                                                                                                                
+incidents                                                                                                           
+initrd.img                                                                                                          
+initrd.img.old                                                                                                      
+lib                                                                                                                 
+lib64                                                                                                               
+lost+found                                                                                                          
+media                                                                                                               
+mnt                                                                                                                 
+opt                            
+proc                                                                                                                
+recipe.txt                                                                                                          
+root                                                                                                                
+run                                                                                                                 
+sbin                                                                                                                
+snap                                                                                                                
+srv                                                                                                                 
+sys                                                                                                                 
+tmp                                                                                                                 
+usr                                                                                                                 
+vagrant                                                                                                             
+var                                                                                                                 
+vmlinuz                                                                                                             
+vmlinuz.old
+$ cat recipe.txt
+And here is the first flag
+
+
+And moving around a little bit we found a username lennie to use
+$ cd home
+$ ls
+lennie
+$ cd lennie 
+
+$ cd incidents
+$ ls
+suspicious.pcapng
+
+Look I'm not Batman but it's literally fucking suspicious
+So we're going to use netcat to download it to the PC
+
+So you set up a listener on a port and send the file to the port. The file contained a bunch of nonsense and some passwords.
+
+I had to do some research because I forgot .pcapng extensions are wiresharl things. but anyway we can see that someone, probably lennie, Was inputting his password for the wrong account so we can use that password to ssh into the machine
+
+We're in and the user flag is right there.
+
+I know there's a lot less copy pasted stuff but I can't really copy paste anything important without giving away passwords or stuff sorry. So you're just gona get a guide.
+
+$ cat concern.txt
+I got banned from your library for moving the "C programming language" book into the horror section. Is there a way I can appeal? --Lennie
+
+
+Some fun stuff in the documents folder but nothing that can really help me become a root.
+
+Running a linpeas script showed us that print.sh is a writable file so we need to create a script for that.
+
+So we navigate to the /etc/print.sh and add aline to the script to connect back to our computer via a port you select on the netcat listener and it will connect as root and you can get the root flag
